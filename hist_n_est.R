@@ -20,22 +20,26 @@ ggplot_histogram <- function(sim, N) {
     df<-data.frame(n)
 
     p <- ggplot(df, aes(x=n)) + 
-        geom_histogram(color="grey16", 
+        geom_histogram(#color="grey16", 
                        #fill="#51abcb",               # Histogram bar colors
-                       fill="lightblue4",
+                       color="black",
+                       fill="white",
+                       #fill="lightblue4",
                        binwidth=bw) +
         labs(y="Number of iterations", 
              x="Abundance (N) estimate") +
-        theme(axis.text=element_text(size=8),          # Size of axis numbering
-              axis.title=element_text(size=10)) +      # Size of axis titles
+        #theme(axis.text=element_text(size=8),          # Size of axis numbering
+              #axis.title=element_text(size=10)) +      # Size of axis titles
+        theme_classic()
         #scale_x_continuous(breaks=breaks) +
         scale_y_continuous(breaks=seq(0,100,50))
 
      if (N > 1) {
         p <- p + geom_vline(xintercept=N,
-                   color='orchid3', 
-                   #color='red', 
-                   size=0.6, 
+                   #color='orchid3', 
+                   color='blue', 
+                   #size=0.6, 
+                   size=1.0,
                    linetype="dashed")
      }
 
