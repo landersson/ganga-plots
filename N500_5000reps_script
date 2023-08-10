@@ -1,0 +1,182 @@
+library(sf)
+library(dssd)
+#library(ggplot2)
+#library(mrds)
+#library(splancs)
+library(dsims)
+#library (gridExtra)
+#library (rgeos)
+
+
+## Open library to simplify shape file
+
+# library(rmapshaper)
+
+## For parallel computing
+
+# parallel::detectCores()
+
+install.packages("pbapply")
+
+library(pbapply)
+
+## Call and create study region
+
+# study.region <- st_read("area_processed.shp")
+
+# study.region2 <- ms_simplify(study.region)
+
+# saveRDS(study.region2, "studyregion_RDSfiles/study.region_simp.rds")
+
+study.region2 <- readRDS("studyregion_RDSfiles/study.region_simp.rds")
+
+ #plot(study.region2)
+
+## Name the region (no strata)
+
+region <- make.region (region.name = "Study Region", units = "m", shape = study.region2)
+
+## View the region
+
+# plot (region)
+
+##Create and plot the density surface 
+
+#density <- make.density (region = region,
+#                   x.space = 75, # 50 would create too many grid cells to run
+#y.space = 200,
+#                    constant = 1)
+
+# saveRDS(density, "studyregion_RDSfiles/density_actualregion_simp.rds")
+
+density <- readRDS("studyregion_RDSfiles/density_actualregion_simp.rds")
+
+ #plot(density)
+
+##Create covariate list (*cluster size, 2 or 3*)
+
+#covariates <-list(size = list(distribution = "ztruncpois", mean = 2))
+
+##Create population description (*N = no. of clusters if using covariates)
+
+pop.description <- make.population.description (region = region,
+                                                density = density,
+                                                # covariates = covariates,
+                                                N = 500,
+                                                fixed.N = TRUE)
+
+#pop.description
+
+##Create a coverage grid (optional for sims)
+
+# covergrid <- make.coverage(region,
+#                           n.grid.points = 1000)
+
+# covergrid <-readRDS("studyregion_RDSfiles/designcoverage_actualsurvey_region.rds")
+
+# plot(covergrid)
+
+##Make a half normal detection function
+
+# define covariates on the log scale (*log no. should stay @ 1.08??* --> Jo??) 
+
+# cov.param <- list(size = log(0.69)
+
+
+##Create the detectability description
+
+detect.hn <- make.detectability(key.function = "hn", 
+                                scale.param = 50, 
+                                #   cov.param = cov.param,
+                                truncation = 100)
+
+##Plot the simulation detection functions
+
+
+# plot(detect.hn, pop.description, xlab= Distance (m)) 
+
+
+##Create the survey design object 
+
+surveydesign <- make.design(region = region,
+                            transect.type = "line",
+                            design = "segmentedgrid",
+                            line.length = 86780, # actual survey effort # I dont thin it matters what is here, as long as the transect file called below has the correct line length
+                            seg.length = 100,
+                            edge.protocol = "minus",
+                            design.angle = 0,
+                            #coverage.grid = covergrid,
+                            truncation = 100)
+
+
+# surveydesign
+
+##Create modeled transects
+
+ # survey.design.transects <- generate.transects(surveydesign)
+
+# saveRDS(survey.design.transects, "studyregion_RDSfiles/transects_actualregion_347120_simp_100m2.rds")
+
+survey.design.transects <- readRDS("studyregion_RDSfiles/transects_110000.rds")
+
+
+# survey.designtransectsx3 <- readRDS ("studyregion_RDSfiles/transects_actualregion_260340_simp_100m.rds")
+ 
+# plot(region, survey.design.transects)
+
+##Define the analysis (half-normal with no covariates, hazard rate with no cv, half normal with cluster size as cv, hazard rate with cluster size as cv, model will be selected based on the AIC value) -->Jo, should we include all of these even if we add covariates back in? Hazard rate with coviariates is a little much with such little data??
+
+#analyses <- make.ds.analysis(dfmodel = list(~1, ~1, ~size, ~size),
+#                            key = c("hn", "hr", "hn", "hr"),
+#                           truncation = 200,
+#                          er.var = "R2",
+#                         criteria = "AIC")
+
+##Define the analysis with no covariates, using half normal and hazard rate
+analyses <- make.ds.analysis(dfmodel = list(~1, ~1),
+                             key = c("hn", "hr"),
+                             truncation = 100,
+                             er.var = "R2",
+                             criteria = "AIC")
+
+##Create the simulation object
+
+sim_surveydesign1 <- make.simulation (reps = 5000,
+                                      design = surveydesign,
+                                      population.description = pop.description,
+                                      detectability = detect.hn,
+                                      ds.analysis = analyses)
+
+
+##View what the simulation may look like                                           
+
+# set the display window up for 4 plots
+
+# par(mfrow = c(2,2))
+
+##Generate and plot an example population, set of transects and the resulting distance data
+
+ #eg.survey <- run.survey(sim_surveydesign1)
+ 
+
+ #eg.survey
+
+#  saveRDS(eg.survey, "Simulation_output/egsurvey_N150_4x.rds")
+
+# plot it
+
+# plot(eg.survey, region)
+
+# parallel::detectCores()
+
+## Run the simulation (default cores are maximum avail -1)
+
+# sim_surveydesign1.run <- run.simulation(sim_surveydesign1)
+
+sim_surveydesign_simp  <- run.simulation(sim_surveydesign1, run.parallel = TRUE)
+
+##Save the simulation output
+
+# saveRDS(sim_surveydesign_simp, "Simulation_output/sim_simp_N500_86780.rds")
+
+saveRDS(sim_surveydesign_simp, "simulation_output/sim_N500_5000reps.rds")
